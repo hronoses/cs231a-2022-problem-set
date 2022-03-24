@@ -11,7 +11,6 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            // "cwd": "G:\\My Drive\\Handbooks\\CV\\courses\\cs231a\\problem set\\ps1_code",
 
         }
     ]
