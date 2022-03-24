@@ -17,24 +17,18 @@ Please see lecture notes and slides to see how the linear least squares eight
 point algorithm works
 '''
 def lls_eight_point_alg(points1, points2):
-    # print(points2, points1.shape)
     num_points = points1.shape[0]
     W = np.zeros((num_points, 9))
     for i in range(num_points):
         W[i] = np.outer(points2[i], points1[i]).flatten()
     u, s, v = np.linalg.svd(W)
-    # print(u.shape, v.shape)
     min_s = np.argmin(s)
+    # total least squares problem. Soltuion - right singular vector that correspond to the lowest singular value
     f = v[min_s]
-    # print(W.T @ u[:, min_s])
-    # print(s[min_s] * f)
     F_1 = f.reshape((3, 3))
     u, s, v = np.linalg.svd(F_1)
     s[-1] = 0
-    S = np.eye(3)
-    S = S * s
-    # print(S, s)
-    F = u @ S @ v
+    F = u @ np.diag(s) @ v
     return F
 
 '''
@@ -55,29 +49,20 @@ def normalized_eight_point_alg(points1, points2):
     T2 = np.eye(3, 3)
     mean_1 = np.mean(points1, axis=0)
     mean_2 = np.mean(points2, axis=0)
-    # std_1 = np.std(points1, axis=0)
     T1[:, -1] = -mean_1
     T2[:, -1] = -mean_2
 
-    # print(points1 - mean_1)
+    # mean distance 
     s1 = np.mean(np.sqrt((points1 - mean_1) ** 2))
     s2 = np.mean(np.sqrt((points2 - mean_2) ** 2))
-    # T1[0, 0] = 2 / s1 
-    # T1[1, 1] = 2 / s1 
     T1 = T1 * 2 / s1
     T1[2, 2] = 1 
-
     
-    # T2[0, 0] = 2 / s2 
-    # T2[1, 1] = 2 / s2
     T2 = T2 * 2 / s2
     T2[2, 2] = 1 
 
-    # print(T1)
-    # norm_point1 = T1 @ points1.T
     norm_point1 = points1 @ T1.T
     norm_point2 = points2 @ T2.T
-    # print(points1, norm_point1)
 
     F = lls_eight_point_alg(norm_point1, norm_point2)
     return T2.T @ F @ T1
@@ -144,8 +129,8 @@ def compute_distance_to_epipolar_lines(points1, points2, F):
     num_points = points1.shape[0]
     dst = 0
     for i in range(num_points):
-        l = F @ points2[i]
-        dst = (l @ points1[i]) / np.sqrt(l[0] ** 2 + l[1] ** 2)
+        l = F @ points1[i]
+        dst += np.abs(l @ points2[i]) / np.sqrt(l[0] ** 2 + l[1] ** 2)
     dst = dst / num_points
     return dst
 
@@ -192,4 +177,3 @@ if __name__ == '__main__':
         plot_epipolar_lines_on_images(points1, points2, im1, im2, F_normalized)
 
         plt.show()
-        # break
