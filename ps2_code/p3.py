@@ -18,8 +18,17 @@ Returns:
     motion - the motion matrix
 '''
 def factorization_method(points_im1, points_im2):
-    # TODO: Implement this method!
-    raise Exception('Not Implemented Error')
+    num_points = points_im1.shape[0]
+    points_im1 = points_im1 - np.mean(points_im1, axis=0)
+    points_im2 = points_im2 - np.mean(points_im2, axis=0)
+    D = np.zeros((4, num_points))
+    D[:2, :] = points_im1.T[:2, :]
+    D[2:, :] = points_im2.T[:2, :]
+    u, s, v = np.linalg.svd(D)
+    motion = u[:, :3] 
+    structure = np.diag(s[:3]) @ v[:3, :]
+    # structure =  v[:3, :]  * np.sqrt(s[:3, np.newaxis])
+    return structure, motion
 
 if __name__ == '__main__':
     for im_set in ['data/set1', 'data/set1_subset']:

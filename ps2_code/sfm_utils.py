@@ -268,12 +268,12 @@ def bundle_adjustment(frame):
 
     px = 0
     py = 0
-    
+    print('error')
     errors = reprojection_error_mot_str(frame.match_idx, frame.match_points, frame.focal_length, px, py, motion_angle_axis, frame.structure)
-
+    print('NOnlnear LLs')
     vec = least_squares(reprojection_error_mot_str_opt, np.hstack((motion_angle_axis.flatten(), frame.structure.flatten())),
         args=(frame.match_idx, frame.match_points, frame.focal_length, px, py), method='lm')
-
+    print('NOnlnear LLs done')
     cut = 3 * 2 * num_cameras
 
     opt_val = vec['x']
@@ -504,10 +504,16 @@ Returns:
 def merge_all_frames(frames):
     merged_frame = deepcopy(frames[0])
     for i in range(1,len(frames)):
+        print(f'Merging frame {i} and {i+1}...')
         merged_frame = merge_two_frames(merged_frame, frames[i], i+1)
+        print(f'Triangilating...')
+
         merged_frame.structure = triangulate(merged_frame)
+        print(f'Bundle...')
         bundle_adjustment(merged_frame)
+        print(f'Remove outlines...')
         remove_outliers(merged_frame, 10)
+        print(f'Bundle again...')
         bundle_adjustment(merged_frame)
 
     return merged_frame

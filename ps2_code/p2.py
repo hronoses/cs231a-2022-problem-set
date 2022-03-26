@@ -16,8 +16,13 @@ Returns:
     epipole - the homogenous coordinates [x y 1] of the epipole in the first image
 '''
 def compute_epipole(points1, points2, F):
-    # TODO: Implement this method!
-    raise Exception('Not Implemented Error')
+    l = points2 @ F
+    u, s, v = np.linalg.svd(l)
+    min_s = np.argmin(s)
+    # total least squares problem. Soltuion - right singular vector that correspond to the lowest singular value
+    e = v[min_s]
+    return e/e[-1]
+
     
 '''
 COMPUTE_MATCHING_HOMOGRAPHIES determines homographies H1 and H2 such that they
@@ -33,8 +38,37 @@ Returns:
     H2 - the homography associated with the second image
 '''
 def compute_matching_homographies(e2, F, im2, points1, points2):
-    # TODO: Implement this method!
-    raise Exception('Not Implemented Error')
+    width, height = im2.shape
+    T = np.eye(3)
+    T[:, -1] = [-width/2, -height/2, 1]
+    e2_trans = T @ e2
+    e2_trans /= e2_trans[-1]
+    alpha = np.sign(e2_trans[0])
+    e_length = np.sqrt(e2_trans @ e2_trans)
+    R = np.diag([alpha * e2_trans[0] / e_length]*3)
+    R[-1, -1] = 1
+    R[0, 1] = alpha * e2_trans[1] / e_length
+    R[1, 0] = -alpha * e2_trans[1] / e_length
+    f = (R @ T @ e2)[0]
+    G = np.eye(3)
+    G[2, 0] = - 1 / f
+    H2 = np.linalg.inv(T) @ G @ R @ T
+    # compute H1
+    e_x = np.zeros((3,3))
+    e_x[0,1] = -e2[2]
+    e_x[0,2] = e2[1]
+    e_x[1,2] = -e2[0]
+    e_x = e_x - e_x.T
+    M = e_x @ F + np.outer(e2, np.ones((1,3)))
+    p2 = points2 @ H2.T
+    p2 = p2 / p2[:, -1, np.newaxis] 
+    p1 = points2 @ M.T @ H2.T
+    p1 /= p1[:, -1, np.newaxis]
+    a = np.linalg.lstsq(p1, p2[:, 0])
+    HA = np.eye(3) 
+    HA[0] = a[0]
+    H1 = HA @ H2 @ M
+    return H1, H2
 
 if __name__ == '__main__':
     # Read in the data
@@ -48,6 +82,9 @@ if __name__ == '__main__':
     F = normalized_eight_point_alg(points1, points2)
     e1 = compute_epipole(points1, points2, F)
     e2 = compute_epipole(points2, points1, F.transpose())
+    # plot_epipolar_lines_on_images(points1, points2, im1, im2, F)
+    # plt.show()
+
     print("e1", e1)
     print("e2", e2)
 

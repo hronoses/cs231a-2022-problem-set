@@ -27,7 +27,6 @@ Returns:
     camera_matrix - The calibrated camera matrix (3x4 matrix)
 '''
 def compute_camera_matrix(real_XY, front_image, back_image):
-    # TODO: Fill in this code
     # Hint: reshape your values such that you have PM=p,
     # and use np.linalg.lstsq or np.linalg.pinv to solve for M.
     # See https://apimirror.com/numpy~1.11/generated/numpy.linalg.pinv
@@ -35,21 +34,16 @@ def compute_camera_matrix(real_XY, front_image, back_image):
     # Our solution has shapes for M=(8,), P=(48,8), and p=(48,)
     # Alternatively, you can set things up such that M=(4,2), P=(24,4), and p=(24,2)
     # Lastly, reshape and add the (0,0,0,1) row to M to have it be (3,4)
-    # BEGIN YOUR CODE HERE
-    # print(real_XY.shape)
     p = np.vstack((real_XY, real_XY))
     front_image = np.hstack((front_image, np.zeros(12).reshape((12, 1)), np.ones(12).reshape((12, 1))))
     
     back_image = np.hstack((back_image, np.ones(12).reshape((12, 1)) * 150, np.ones(12).reshape((12, 1))))
+    # uncomment to understand why the points should be at different planes
     # back_image = front_image
     P = np.vstack((front_image, back_image))
     m, res, rank, s = np.linalg.lstsq(P, p)
     # m = np.hstack((m, np.ones(4).reshape((4, 1))))
-
-    print(res, rank, s)
-    print(np.sqrt(np.sum(res) / 24))
-    return m
-    # END YOUR CODE HERE
+    return m.T
 
 '''
 RMS_ERROR
@@ -70,13 +64,9 @@ def rms_error(camera_matrix, real_XY, front_image, back_image):
     # back_image = front_image
 
     P = np.vstack((front_image, back_image))
-    p_pred = P @ camera_matrix
+    p_pred = P @ camera_matrix.T
     rms = np.sqrt(np.sum((p - p_pred) ** 2) / 24)
-    print(p - p_pred)
-    print((p - p_pred) / p)
     return rms
-    pass
-    # END YOUR CODE HERE
 
 if __name__ == '__main__':
     import os

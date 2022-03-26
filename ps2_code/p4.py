@@ -19,9 +19,22 @@ Returns:
         four possible transformations
 '''
 def estimate_initial_RT(E):
-    # TODO: Implement this method!
-    raise Exception('Not Implemented Error')
-
+    u, s, v = np.linalg.svd(E)
+    W = np.array(([0,-1, 0],
+                  [1, 0, 0],
+                  [0, 0, 1]))
+    Q = u @ W @ v
+    R1 = np.linalg.det(Q) * Q
+    Q2 = u @ W.T @ v
+    R2 = np.linalg.det(Q2) * Q2
+    T1 = u[:, 2]
+    T2 = -u[:, 2]
+    RT = np.array([np.hstack([R1, T1[:, np.newaxis]]),
+            np.hstack([R1, T2[:, np.newaxis]]),
+            np.hstack([R2, T1[:, np.newaxis]]),
+            np.hstack([R2, T2[:, np.newaxis]]),
+    ])
+    return RT
 '''
 LINEAR_ESTIMATE_3D_POINT given a corresponding points in different images,
 compute the 3D point is the best linear estimate
@@ -32,8 +45,13 @@ Returns:
     point_3d - the 3D point
 '''
 def linear_estimate_3d_point(image_points, camera_matrices):
-    # TODO: Implement this method!
-    raise Exception('Not Implemented Error')
+    a = np.outer(image_points[0], camera_matrices[0, 2]) - camera_matrices[0, :2]
+    a2 = np.outer(image_points[1], camera_matrices[1, 2]) - camera_matrices[1, :2]
+    A = np.vstack((a, a2))
+    u, s, v = np.linalg.svd(A)
+    P = v[np.argmin(s)]
+    P = P / P[-1]
+    return P[:3]
 
 '''
 REPROJECTION_ERROR given a 3D point and its corresponding points in the image
@@ -46,8 +64,10 @@ Returns:
     error - the 2Mx1 reprojection error vector
 '''
 def reprojection_error(point_3d, image_points, camera_matrices):
-    # TODO: Implement this method!
-    raise Exception('Not Implemented Error')
+    p1 = camera_matrices @ np.append(point_3d, 1)
+    p1 = p1 / p1[:, np.newaxis, 2]
+    error = p1[:,:2] - image_points
+    return error.flatten()
 
 '''
 JACOBIAN given a 3D point and its corresponding points in the image
@@ -59,8 +79,15 @@ Returns:
     jacobian - the 2Mx3 Jacobian matrix
 '''
 def jacobian(point_3d, camera_matrices):
-    # TODO: Implement this method!
-    raise Exception('Not Implemented Error')
+    Y = camera_matrices @ np.append(point_3d, 1)
+    num_cameras = camera_matrices.shape[0]
+    J = np.zeros((num_cameras, 2, 3))
+    # TODO vectorize
+    for i in range(num_cameras): # num of cameras
+        for j in range(2): # dimension of a point
+            for k in range(3):
+                J[i, j, k] = camera_matrices[i, j, k] / Y[i, 2] - Y[i, j] / Y[i, 2] ** 2 * camera_matrices[i, 2, k]
+    return J.reshape((2 * num_cameras, 3))
 
 '''
 NONLINEAR_ESTIMATE_3D_POINT given a corresponding points in different images,
@@ -72,8 +99,14 @@ Returns:
     point_3d - the 3D point
 '''
 def nonlinear_estimate_3d_point(image_points, camera_matrices):
-    # TODO: Implement this method!
-    raise Exception('Not Implemented Error')
+    # print('Estimating 3d point. Nonlineary...')
+    # print(image_points.shape, camera_matrices)
+    P = linear_estimate_3d_point(image_points, camera_matrices)
+    num_iters = 10
+    for i in range(num_iters):
+        J = jacobian(P, camera_matrices)
+        P = P - np.linalg.pinv(J) @ reprojection_error(P, image_points, camera_matrices)
+    return P
 
 '''
 ESTIMATE_RT_FROM_E from the Essential Matrix, we can compute  the relative RT 
@@ -87,8 +120,20 @@ Returns:
         two cameras
 '''
 def estimate_RT_from_E(E, image_points, K):
-    # TODO: Implement this method!
-    raise Exception('Not Implemented Error')
+    print('Estimation RT from E')
+    RT = estimate_initial_RT(E)
+    points = np.zeros((4, 3))
+    points_seconds_camera = np.zeros((4, 3))
+    M = np.zeros((2, 3, 4))
+    M[0, :, :3] = K
+    for i in range(4):
+        M[1] = K @ RT[i]
+        points[i] = nonlinear_estimate_3d_point(image_points[0], M)
+        points_seconds_camera[i] = RT[i, :, :3].T @ points[i] - RT[i, :, :3].T @ RT[i, :, 3]   # points relative to the second camera
+        # Note the expression below is wrong. Think why See lecture notes 3, page 4
+        # points_seconds_camera[i] = RT[i, :, :3] @ points[i] + RT[i, :, 3]  
+    match = np.argmax(np.sign(points[:, -1] * points_seconds_camera[:, -1]))
+    return RT[match]
 
 if __name__ == '__main__':
     run_pipeline = True
@@ -189,13 +234,22 @@ if __name__ == '__main__':
     print('-' * 80)
     print('Part F: Run the entire SFM pipeline')
     print('-' * 80)
+    print('Building frames .....')
     frames = [0] * (len(image_paths) - 1)
+    print(f'Number of frames: {len(frames)}')
+    print(f'Shape of F  matricec: {fundamental_matrices.shape}')
+    print(f'Shape of matches_subset: {matches_subset.shape}')
     for i in range(len(image_paths)-1):
+    # for i in range(3):
         frames[i] = Frame(matches_subset[i].T, focal_length,
                 fundamental_matrices[i], im_width, im_height)
-        bundle_adjustment(frames[i])
+        print(f'Bundle adj for frame {i}')
+        # bundle_adjustment(frames[i])
+    print('Merging frames...')
     merged_frame = merge_all_frames(frames)
+   
 
+    print('Constructing the dense matching...')
     # Construct the dense matching
     camera_matrices = np.zeros((2,3,4))
     dense_structure = np.zeros((0,3))
@@ -211,7 +265,9 @@ if __name__ == '__main__':
             points_3d[j,:] = nonlinear_estimate_3d_point(
                 matches[:,j].reshape((2,2)), camera_matrices)
         dense_structure = np.vstack((dense_structure, points_3d[use_point,:]))
-
+    print(dense_structure.shape)
+    print(dense_structure)
+    print(dense_structure.shape)
     fig = plt.figure(figsize=(10,10))
     ax = fig.gca(projection='3d')
     ax.scatter(dense_structure[:,0], dense_structure[:,1], dense_structure[:,2],
