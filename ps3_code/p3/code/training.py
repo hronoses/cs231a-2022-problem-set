@@ -39,7 +39,7 @@ def train(epochs,
     batch_loss = []
     sum_loss = 0
 
-   if model is not None:
+    if model is not None:
         print("Using passed in model...")
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     else:
@@ -64,7 +64,7 @@ def train(epochs,
     writer = SummaryWriter(log_dir,comment="{}-training".format(model_prefix))
     
     # Loss functions 
-    l1_criterion = None #TODO initialize the L1 Loss to be used for optimizing the output depth
+    l1_criterion =  nn.L1Loss() #TODO initialize the L1 Loss to be used for optimizing the output depth
 
     # Starting training 
     print("Starting training ... ")
@@ -80,17 +80,17 @@ def train(epochs,
         epoch_start = time.time()
         end = time.time()
 
-        for idx, batch in enumerate(trainloader):
+        for idx, batch in enumerate(train_data_loader):
 
             optimizer.zero_grad() 
 
             image_x = batch["rgb"].to(device)
             depth_y = batch["depth"].to(device)
 
-            preds = None # TODO call your model on the image input to get its predictions
+            preds = model(image_x) # TODO call your model on the image input to get its predictions
 
             # calculating the losses 
-            l1_loss = None # TODO call the l1_criterion with the predictions and normalized depth
+            l1_loss =  l1_criterion(preds, depth_y) # TODO call the l1_criterion with the predictions and normalized depth
             
             ssim_loss = torch.clamp(
                 (1-ssim_criterion(preds, depth_y, 1.0))*0.5, 

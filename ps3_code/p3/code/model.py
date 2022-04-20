@@ -10,7 +10,6 @@ class Encoder(nn.Module):
         self.densenet = models.densenet161(pretrained=encoder_pretrained)
     
     def forward(self, x):
-        
         feature_maps = [x]
 
         for key, value in self.densenet.features._modules.items():
@@ -66,8 +65,7 @@ class Decoder(nn.Module):
         self.final_upsample = torch.nn.UpsamplingNearest2d(scale_factor = 2)
 
     def forward(self, features):
-
-        x_block0= features[3]
+        x_block0 = features[3]
         x_block1 = features[4]
         x_block2 = features[6]
         x_block3 = features[8]
@@ -87,8 +85,9 @@ class DenseDepth(nn.Module):
 
     def __init__(self, encoder_pretrained=True):
         super(DenseDepth, self).__init__()
-
+        self.encoder = Encoder(encoder_pretrained=encoder_pretrained)
+        self.decoder = Decoder()
         # TODO initialize encoder and decoder here
     
     def forward(self, x):
-        return None # TODO pass x through encoder and decoder and return result
+        return self.decoder(self.encoder(x))

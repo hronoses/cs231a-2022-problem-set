@@ -13,8 +13,12 @@ def draw_tracks(frame_num, frame, mask, points_prev, points_curr, color, folder_
             frame, (round(a), round(b)), 3, color[i].tolist(), -1)
 
     img = cv2.add(frame, mask)
-
-    cv2.imwrite(os.path.join(folder_path, 'frame_%02d.png'% frame_num), img)
+    # create a folder "frame"
+    print('writing///')
+    directory = folder_path + 'frame/'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    cv2.imwrite(os.path.join(directory, 'frame_%02d.png'% frame_num), img)
     return img
 
 
@@ -60,16 +64,22 @@ def Q5_A(folder_path):
     mask = np.zeros_like(old_frame)
 
     tracks = []
-
-    for i,frame in enumerate(frames[1:]):
+    for i, frame in enumerate(frames[1:]):
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        # TODO: Fill in this code
         # BEGIN YOUR CODE HERE
-        pass
-        
+        # calculate optical flow
+        p1, st, err = cv2.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)
+        # Select good points
+        if p1 is not None:
+            good_new = p1[st==1]
+            good_old = p0[st==1]
+        # Now update the previous frame and previous points
+        old_gray = frame_gray.copy()
+        p0 = good_new.reshape(-1, 1, 2)
+        tracks.append(good_old.astype(int))
         #Once you compute the new feature points for this frame, comment this out
         #to save images for your PDF:
-        #draw_tracks(frame_num, frame, mask, points_prev, points_curr, color, folder_path)
+        draw_tracks(i, frame, mask, good_old, good_new, color, folder_path)
         # END YOUR CODE HERE
 
     return tracks
@@ -83,25 +93,22 @@ def Q5_B(pts, intrinsic, folder_path):
     in the result.
 
     Input:
-      pts: a list of (N,2) numpy arrays, the results from Q2_A.
+      pts: a list of (N,2) numpy arrays, the results from Q5_A.
       intrinsic: (3,3) numpy array representing the camera intrinsic.
 
     Output:
       pts_3d: a list of (N,3) numpy arrays, the 3D positions of the tracked features in each frame.
       in each frame.
     """
-    depth_all = []
-    for i in range(1, 11):
-        depth_filepath = os.path.join(folder_path, 'depth%02d.txt' % i)
-        depth_i = np.loadtxt(depth_filepath)
-        depth_all.append(depth_i)
-        
+    print('loading depth data...')
     pt_3d_frames = []
-    # TODO: Fill in this code
-    # BEGIN YOUR CODE HERE
-    pass
-    # END YOUR CODE HERE
-
+    for i in range(9):
+        depth_filepath = os.path.join(folder_path, 'depth%02d.txt' % (i + 1))
+        depth_i = np.loadtxt(depth_filepath)
+        points3d = np.linalg.inv(intrinsic) @ np.vstack([pts[i].T, np.ones(pts[i].shape[0])])
+        points3d = points3d * depth_i[pts[i][:, 1], pts[i][:, 0]]
+        points3d = points3d[:, np.logical_not(np.isnan(points3d[0]))]
+        pt_3d_frames.append(points3d.T)
     return pt_3d_frames
 
 
@@ -124,17 +131,15 @@ def dense_flow(frame1, frame2, title=None):
 
 if __name__ == "__main__":
     # Q5 part(a)
-    pts = Q5_A(folder_path="./p5_data/globe1/")
+    # pts = Q5_A(folder_path="./p5_data/globe1/")
     intrinsic = np.array([[486, 0, 318.5],
                           [0, 491, 237],
                           [0, 0, 1]])
 
     # Q5 part(b)
-    pts_3d = Q5_B(pts, intrinsic, folder_path="./p5_data/globe1/")
-
+    # pts_3d = Q5_B(pts, intrinsic, folder_path="./p5_data/globe1/")
     # Q5 part(c) (tracking for books)
-    pts_book = Q5_A(folder_path="./p5_data/book/")
-
+    # pts_book = Q5_A(folder_path="./p5_data/book/")
     # Q5 part(d)
     frame1 = cv2.imread('p5_data/chairs/frame_1_chairs.png')
     frame2 = cv2.imread('p5_data/chairs/frame_2_chairs.png')

@@ -9,6 +9,39 @@ from io import BytesIO
 import random
 from itertools import permutations
 
+def load_zip_to_mem_old(zip_file, is_mono=True):
+    """
+    Function to load CLEVR-D data from the zip file.
+    """
+    # Load zip file into memory
+    print('Loading dataset zip file...', end='')
+    from zipfile import ZipFile
+    input_zip = ZipFile(zip_file)
+    print('Loaded.', end='')
+    print(input_zip.namelist()[1])
+    print(input_zip.read(input_zip.namelist()[1]))
+    # print(input_zip.namelist())
+    # file_dict = {name.split('/')[1]: input_zip.read(name) for 
+            # name in input_zip.namelist() if '.png' in name}
+    data = []
+    # print(file_dict)
+    return False
+    for file_name in file_dict:
+      #Only deal with right rgb images, all else via dict lookup
+      if 'right' in file_name and 'CLEVR-D' not in file_name:
+        rgb_right = file_dict[file_name]
+        right_depth_name = file_name.replace('CLEVR','CLEVR-D')
+        depth_right = file_dict[right_depth_name]
+        if is_mono:
+          print('Here')  
+          data.append( (rgb_right, depth_right))
+        else:
+          rgb_left = file_dict[file_name.replace('right','left')]
+          depth_left = file_dict[right_depth_name.replace('right','left')]
+          data.append( (rgb_right,rgb_left, depth_right,depth_left))
+    return data
+
+
 def load_zip_to_mem(zip_file, is_mono=True):
     """
     Function to load CLEVR-D data from the zip file.
@@ -17,22 +50,20 @@ def load_zip_to_mem(zip_file, is_mono=True):
     print('Loading dataset zip file...', end='')
     from zipfile import ZipFile
     input_zip = ZipFile(zip_file)
-    file_dict = {name.split('/')[1]: input_zip.read(name) for 
-            name in input_zip.namelist() if '.png' in name}
     data = []
-    for file_name in file_dict:
-      #Only deal with right rgb images, all else via dict lookup
+    for file_name in input_zip.namelist():
       if 'right' in file_name and 'CLEVR-D' not in file_name:
-        rgb_right = file_dict[file_name]
-        right_depth_name = file_name.replace('CLEVR','CLEVR-D')
-        depth_right = file_dict[right_depth_name]
+        rgb_right = input_zip.read(file_name)
+        right_depth_name = file_name.replace('CLEVR','CLEVR-D').replace('rgb', 'depth')
+        depth_right = input_zip.read(right_depth_name)
         if is_mono:
-          data.append( (rgb_right, depth_right))
+          data.append((rgb_right, depth_right))
         else:
-          rgb_left = file_dict[file_name.replace('right','left')]
-          depth_left = file_dict[right_depth_name.replace('right','left')]
+          rgb_left = input_zip.read(file_name.replace('right','left'))
+          depth_left = input_zip.read(right_depth_name.replace('right','left').replace('rgb', 'depth'))
           data.append( (rgb_right,rgb_left, depth_right,depth_left))
     return data
+
 
 def get_inverse_transforms():
     """
@@ -104,10 +135,10 @@ class DepthDatasetMemory(Dataset):
             self.samples.append(sample)
 
     def __getitem__(self, idx):
-        return None # TODO 
+        return self.samples[idx]
 
     def __len__(self):
-        return None # TODO 
+        return len(self.data)
 
 def get_data_loaders(path, 
                     is_mono=True, 
@@ -125,13 +156,13 @@ def get_data_loaders(path,
         pct_dataset (float): percent of dataset to use 
     """
     data = load_zip_to_mem(path)
-    train_start_idx = None # TODO
-    train_end_idx = None # TODO 
-    test_start_idx = None # TODO 
-    test_end_idx = None # TODO 
+    train_start_idx = 0
+    train_end_idx = int(train_test_split * len(data) * pct_dataset)
+    test_start_idx = int(train_test_split * len(data) * pct_dataset)
+    test_end_idx = int(len(data) * pct_dataset)
 
-    training_dataset = None # TODO 
-    testing_dataset = None # TODO 
-
+    training_dataset = DepthDatasetMemory(data, is_mono=True, start_idx=train_start_idx, end_idx = train_end_idx) 
+    testing_dataset = DepthDatasetMemory(data, is_mono=True, start_idx=test_start_idx, end_idx = test_end_idx) 
+    
     return (DataLoader(training_dataset, batch_size, shuffle=True, pin_memory=True),
             DataLoader(testing_dataset, batch_size, shuffle=False, pin_memory=True))

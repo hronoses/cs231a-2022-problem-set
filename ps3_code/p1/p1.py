@@ -41,8 +41,18 @@ side-length. The final "voxels" output should be a ndarray where every row is
 the location of a voxel in 3D space.
 '''
 def form_initial_voxels(xlim, ylim, zlim, num_voxels):
-    # TODO: Implement this method!
-    raise Exception('Not Implemented Error')
+    cube_location = np.vstack([xlim, ylim, zlim])
+    cube_size = cube_location[:, 1] - cube_location[:, 0]
+    V = np.prod(cube_size)
+    voxel_volume = V / num_voxels
+    voxel_size = voxel_volume ** (1/3)
+    num_x, num_y, num_z = np.rint(cube_size / voxel_size).astype(int)
+    x = np.linspace(*xlim, num_x)
+    y = np.linspace(*ylim, num_y)
+    z = np.linspace(*zlim, num_z)
+    xx, yy, zz = np.meshgrid(x, y, z)
+    voxels = np.vstack([xx.flatten(), yy.flatten(), zz.flatten()])
+    return  voxels.T,  voxel_size
 
 
 '''
@@ -91,8 +101,12 @@ def get_voxel_bounds(cameras, estimate_better_bounds = False, num_voxels = 4000)
     ylim = ylim + diff(ylim) / 4 * np.array([1, -1])
 
     if estimate_better_bounds:
-        # TODO: Implement this method!
-        raise Exception('Not Implemented Error')
+        voxels, voxel_size = form_initial_voxels(xlim, ylim, zlim, 4000)
+        for c in cameras:
+            voxels = carve(voxels, c)  
+        xlim[0], ylim[0], zlim[0] = np.min(voxels, axis=0) - voxel_size
+        xlim[1], ylim[1], zlim[1] = np.max(voxels, axis=0) + voxel_size
+
     return xlim, ylim, zlim
     
 
@@ -112,9 +126,18 @@ Returns:
     voxels - a subset of the argument passed that are inside the silhouette
 '''
 def carve(voxels, camera):
-    # TODO: Implement this method!
-    raise Exception('Not Implemented Error')
+    silhouette_shape = camera.silhouette.shape
+    voxel_projections = camera.P @ np.hstack([voxels, np.ones((voxels.shape[0], 1))]).T
+    voxel_projections = voxel_projections[:2] / voxel_projections[2]
+    voxel_projections = voxel_projections.astype(int)
 
+    valid_voxels = np.nonzero((voxel_projections[0] > 0) 
+                            & (voxel_projections[1] > 0)
+                            & (voxel_projections[0] < silhouette_shape[1])
+                            & (voxel_projections[1] < silhouette_shape[0]))[0]
+    projection = camera.silhouette.T[voxel_projections[:, valid_voxels][0], voxel_projections[:, valid_voxels][1] ]
+    valid_voxels = valid_voxels[np.nonzero(projection)[0]]
+    return voxels[valid_voxels]
 
 '''
 ESTIMATE_SILHOUETTE: Uses a very naive and color-specific heuristic to generate
@@ -138,7 +161,6 @@ if __name__ == '__main__':
     use_true_silhouette = True
     frames = sio.loadmat('frames.mat')['frames'][0]
     cameras = [Camera(x) for x in frames]
-
     # Generate the silhouettes based on a color heuristic
     if not use_true_silhouette:
         for i, c in enumerate(cameras):
@@ -158,19 +180,21 @@ if __name__ == '__main__':
     # You can reduce the number of voxels for faster debugging, but
     # make sure you use the full amount for your final solution
     num_voxels = 6e6
+    estimate_better_bounds = True
     xlim, ylim, zlim = get_voxel_bounds(cameras, estimate_better_bounds)
 
     # This part is simply to test forming the initial voxel grid
-    voxels, voxel_size = form_initial_voxels(xlim, ylim, zlim, 4000)
-    plot_surface(voxels)
+    # voxels, voxel_size = form_initial_voxels(xlim, ylim, zlim, 4000)
+    # plot_surface(voxels)
     voxels, voxel_size = form_initial_voxels(xlim, ylim, zlim, num_voxels)
 
     # Test the initial carving
-    voxels = carve(voxels, cameras[0])
-    if use_true_silhouette:
-        plot_surface(voxels)
-
+    # voxels = carve(voxels, cameras[0])
+    # if use_true_silhouette:
+        # plot_surface(voxels)
     # Result after all carvings
     for c in cameras:
+        print(f"carving camera {c}...")
         voxels = carve(voxels, c)  
+    print('Plotting...')
     plot_surface(voxels, voxel_size)
