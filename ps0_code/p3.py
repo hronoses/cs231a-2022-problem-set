@@ -36,8 +36,6 @@ def part_c(img1, img2):
     # Add the images together and re-normalize them
     # to have minimum value 0 and maximum value 1.
     # Display this image.
-    sumImage = None
-    
     # BEGIN YOUR CODE HERE
     sumImage = normalize_img(img1 + img2)
     # END YOUR CODE HERE
@@ -63,8 +61,6 @@ def part_e(img1, img2):
     # every even row is the corresponding row from image2.
     # Hint: Remember that indices start at 0 and not 1 in Python.
 
-    newImage = None
-
     # BEGIN YOUR CODE HERE
     newImage = np.zeros(img1.shape, dtype=np.double)
     newImage[::2,:,:] = img1[::2,:,:]
@@ -80,7 +76,7 @@ def part_f(img1, img2):
     newImage3 = None
 
     # BEGIN YOUR CODE HERE
-
+    # Todo Skipped
     # END YOUR CODE HERE
     return newImage3
 
@@ -94,7 +90,6 @@ def part_g(img):
     # BEGIN YOUR CODE HERE
     conv = np.array([0.299, 0.587, 0.114])
     img = img @ conv
-    print(img.shape)
     # END YOUR CODE HERE
     return img
 

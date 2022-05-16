@@ -25,8 +25,6 @@ def part_c(u, s, v):
     # Save and display the best rank 20 approximation
     # of the (grayscale) image1.
 
-    rank20approx = None
-
     # BEGIN YOUR CODE HERE
     # rank20approx = np.sum([s[i] * np.outer(u[:, i], v[i])  for i in range(20)], axis=0)
     k = 20
