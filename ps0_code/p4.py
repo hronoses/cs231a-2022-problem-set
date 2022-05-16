@@ -3,34 +3,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage import io
 
-path = 'G:\My Drive\Handbooks\CV\courses\cs231a\problem set\ps0_code'
 def part_a():
     # ===== Problem 4a =====
     # Read in image1 as a grayscale image. Take the singular value
     # decomposition of the image.
     # Hint: use io.imread to read in the image file
 
-    img1 = None
-
-    # BEGIN YOUR CODE HERE
-    img1 = io.imread(path + '\image1.jpg', as_gray=True)
+    img1 = io.imread('image1.jpg', as_gray=True)
     u, s, v = np.linalg.svd(img1)
-    # print(s)
-    
-    # END YOUR CODE HERE
     return u, s, v
 
 def part_b(u, s, v):
     # ===== Problem 4b =====
     # Save and display the best rank 1 approximation 
     # of the (grayscale) image1.
-
-    rank1approx = None
-
-    # BEGIN YOUR CODE HERE
     rank1approx = s[0] * np.outer(u[:, 0], v[0]) 
-
-    # END YOUR CODE HERE
     return rank1approx
 
 def part_c(u, s, v):

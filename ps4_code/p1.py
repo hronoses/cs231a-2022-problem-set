@@ -9,7 +9,8 @@ class Q1_solution(object):
       A: 6x6 numpy array for the system matrix.
     """
     A = np.eye(6)
-    # TODO fill in values for A below
+    A[:3, 3:] = np.eye(3) * 0.1
+    A[3:, 3:] *= 0.8
     # Hint: only 9 entries should be non-zero, with values 1, 0.1, and 0.8
     return A
 
@@ -19,8 +20,8 @@ class Q1_solution(object):
     Output:
       Q: 6x6 numpy array for the covariance matrix.
     """
-    Q = np.eye(6)
-    # TODO fill in values for Q below
+    Q = np.zeros((6, 6))
+    Q[3:, 3:] = np.eye(3) * 0.05
     # Hint: only 3 entries should be non-zero, and all should equal 0.05
     return Q
 
@@ -30,8 +31,7 @@ class Q1_solution(object):
     Output:
       R: 2x2 numpy array for the covariance matrix.
     """
-    R = np.eye(2)
-    # TODO fill in values for R below
+    R = np.eye(2) * 5
     # Hint: only 2 entries should be non-zero, and all should equal 5.0
     return R
 
@@ -44,7 +44,11 @@ class Q1_solution(object):
       obs: (2,) numpy array representing observation.
     """
     # Hint: you should use the camera intrinsics here
-    raise NotImplementedError()
+    K = np.array([[500, 0, 320],
+                [0, 500, 240],
+                [0, 0, 1]])
+    obs = K @ state[:3]
+    obs = obs[:2] / obs[-1]
     return obs
 
   def simulation(self, T=100):
@@ -66,7 +70,11 @@ class Q1_solution(object):
     z_0 = self.observation(x_0) + np.random.multivariate_normal(np.zeros((R.shape[0],)), R)
     observations = [z_0]
     for t in range(1,T):
-        pass # TODO implement this part
+        x = A @ x_0 + np.random.multivariate_normal(np.zeros((Q.shape[0],)), Q)
+        z = self.observation(x) + np.random.multivariate_normal(np.zeros((R.shape[0],)), R)
+        states.append(x)
+        observations.append(z)
+        x_0 = np.copy(x)
     return np.array(states), np.array(observations)
 
   @staticmethod
@@ -78,8 +86,11 @@ class Q1_solution(object):
       H: (2,6) numpy array, the jacobian of the observation model w.r.t state.
     """
     H = np.zeros((2,6))
+    H[0, 0] = 500 / x[2] 
+    H[0, 2] =  - 500 * x[0] / (x[2] ** 2) 
+    H[1, 1] = 500 / x[2] 
+    H[1, 2] =  - 500 * x[1] / (x[2] ** 2)
     # Hint: four values in the Jacobian should be non-zero
-    raise NotImplementedError
     return H
 
   def EKF(self, observations):
@@ -108,16 +119,16 @@ class Q1_solution(object):
     state_sigma = [sigma_0]
     predicted_observation_mean = []
     predicted_observation_sigma = []
-    for ob in observations:
-        mu_bar_next = None # TODO fill this in
-        sigma_bar_next = None # TODO fill this in
-        H = None # TODO fill this in
-        kalman_gain_numerator = None # TODO fill this in
-        kalman_gain_denominator = None # TODO fill this in
-        kalman_gain = None # TODO fill this in
-        expected_observation = None # TODO fill this in
-        mu_next = None # TODO fill this in
-        sigma_next = None # TODO fill this in
+    for iter, ob in enumerate(observations):
+        mu_bar_next = A @ state_mean[-1] 
+        sigma_bar_next = A @ state_sigma[-1] @ A.T + Q
+        C = self.observation_state_jacobian(mu_bar_next)
+        kalman_gain_numerator = sigma_bar_next @ C.T
+        kalman_gain_denominator = C @ sigma_bar_next @ C.T + R
+        kalman_gain = kalman_gain_numerator @ np.linalg.inv(kalman_gain_denominator)
+        expected_observation = self.observation(mu_bar_next)
+        mu_next = mu_bar_next + kalman_gain @ (ob - expected_observation)
+        sigma_next = sigma_bar_next - kalman_gain @ C @ sigma_bar_next
         state_mean.append(mu_next)
         state_sigma.append(sigma_next)
         predicted_observation_mean.append(expected_observation)
@@ -134,17 +145,17 @@ if __name__ == "__main__":
     solution = Q1_solution()
     states, observations = solution.simulation()
     # plotting
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(states[:,0], states[:,1], states[:,2], c=np.arange(states.shape[0]))
-    plt.show()
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.scatter(states[:,0], states[:,1], states[:,2], c=np.arange(states.shape[0]))
+    # plt.show()
 
-    fig = plt.figure()
-    plt.scatter(observations[:,0], observations[:,1], c=np.arange(states.shape[0]), s=4)
-    plt.xlim([0,640])
-    plt.ylim([0,480])
-    plt.gca().invert_yaxis()
-    plt.show()
+    # fig = plt.figure()
+    # plt.scatter(observations[:,0], observations[:,1], c=np.arange(states.shape[0]), s=4)
+    # plt.xlim([0,640])
+    # plt.ylim([0,480])
+    # plt.gca().invert_yaxis()
+    # plt.show()
 
     observations = np.load('./data/Q1E_measurement.npy')
     filtered_state_mean, filtered_state_sigma, predicted_observation_mean, predicted_observation_sigma = \

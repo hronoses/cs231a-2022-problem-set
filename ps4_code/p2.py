@@ -15,8 +15,20 @@ class Q2_solution(Q1_solution):
       we define disparity to be possitive.
     """
     # Hint: this should be similar to your implemention in Q1, but with two cameras
-    raise NotImplementedError()
-    return obs
+     # Hint: you should use the camera intrinsics here
+    K = np.array([[500, 0, 320],
+                [0, 500, 240],
+                [0, 0, 1]])
+    # since we have equal fx fy it does not metter along which axis we make camera displacement
+    b = np.array([0.2, 0, 0])
+
+    obs_left = K @ x[:3]
+    obs_right = K @ (x[:3] + b)
+    obs_left /= obs_left[-1]
+    obs_right /= obs_right[-1]
+    disparity = obs_left[0] - obs_right[0]
+    obs_left[-1] = np.abs(disparity)
+    return obs_left
 
   @staticmethod
   def observation_state_jacobian(x):
@@ -26,8 +38,13 @@ class Q2_solution(Q1_solution):
     Output:
       H: (3,6) numpy array, the jacobian H.
     """
+    b = 0.2 
     H = np.zeros((3,6))
-    raise NotImplementedError()
+    H[0, 0] = 500 / x[2] 
+    H[0, 2] =  - 500 * x[0] / (x[2] ** 2) 
+    H[1, 1] = 500 / x[2] 
+    H[1, 2] =  - 500 * x[1] / (x[2] ** 2)
+    H[2, 2] =  - 500 * b / (x[2] ** 2)
     return H
 
   @staticmethod
@@ -36,7 +53,7 @@ class Q2_solution(Q1_solution):
     Output:
       R: (3,3) numpy array, the covariance matrix for observation noise.
     """
-    raise NotImplementedError()
+    R = np.eye(3) * 5
     return R
 
 
@@ -88,8 +105,11 @@ if __name__ == "__main__":
     ax = fig.add_subplot(111)
     ax.scatter(observations[:,0]-observations[:,2], observations[:,1], s=4)
     for mean, cov in zip(predicted_observation_mean, predicted_observation_sigma):
-        # TODO find out the mean and convariance for (u^R, v^R).
-        raise NotImplementedError()
+        right_mean = mean[:2] - np.array([mean[2], 0])
+        right_cov = cov[:2,:2] 
+        right_cov[0,0] += cov[2,2] - 2 * cov[0, 2] 
+        right_cov[0,1] -= cov[1, 2] 
+        right_cov[1,0] -= cov[1, 2] 
         draw_2d(ax, right_cov, right_mean)
     plt.xlim([0,640])
     plt.ylim([0,480])
