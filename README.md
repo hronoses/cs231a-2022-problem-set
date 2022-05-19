@@ -1,6 +1,6 @@
 ## CS231A Computer Vision
 ### From 3D Reconstruction to Recognition 
-###(Winter 2022)
+(Winter 2022)
 
 Course homepage [http://web.stanford.edu/class/cs231a/index.html](http://web.stanford.edu/class/cs231a/index.html)
 
