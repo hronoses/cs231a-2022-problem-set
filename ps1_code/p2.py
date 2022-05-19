@@ -35,14 +35,14 @@ def compute_camera_matrix(real_XY, front_image, back_image):
     # Alternatively, you can set things up such that M=(4,2), P=(24,4), and p=(24,2)
     # Lastly, reshape and add the (0,0,0,1) row to M to have it be (3,4)
     p = np.vstack((real_XY, real_XY))
-    front_image = np.hstack((front_image, np.zeros(12).reshape((12, 1)), np.ones(12).reshape((12, 1))))
-    
-    back_image = np.hstack((back_image, np.ones(12).reshape((12, 1)) * 150, np.ones(12).reshape((12, 1))))
+    front_image = np.hstack((front_image, np.zeros((12, 1)), np.ones((12, 1))))
+    back_image = np.hstack((back_image, np.ones((12, 1)) * 150, np.ones((12, 1))))
     # uncomment to understand why the points should be at different planes
     # back_image = front_image
     P = np.vstack((front_image, back_image))
     m, res, rank, s = np.linalg.lstsq(P, p)
-    # m = np.hstack((m, np.ones(4).reshape((4, 1))))
+    m = np.hstack((m, np.zeros((4,1))))
+    m[-1, -1] = 1
     return m.T
 
 '''
@@ -59,13 +59,12 @@ Returns:
 def rms_error(camera_matrix, real_XY, front_image, back_image):
     # BEGIN YOUR CODE HERE
     p = np.vstack((real_XY, real_XY))
-    front_image = np.hstack((front_image, np.zeros(12).reshape((12, 1)), np.ones(12).reshape((12, 1))))
-    back_image = np.hstack((back_image, np.ones(12).reshape((12, 1)) * 150, np.ones(12).reshape((12, 1))))
+    front_image = np.hstack((front_image, np.zeros((12, 1)), np.ones((12, 1))))
+    back_image = np.hstack((back_image, np.ones((12, 1)) * 150, np.ones((12, 1))))
     # back_image = front_image
-
     P = np.vstack((front_image, back_image))
-    p_pred = P @ camera_matrix.T
-    rms = np.sqrt(np.sum((p - p_pred) ** 2) / 24)
+    p_pred =  camera_matrix @ P.T
+    rms = np.sqrt(np.sum((p - p_pred[:2].T) ** 2) / 24)
     return rms
 
 if __name__ == '__main__':
