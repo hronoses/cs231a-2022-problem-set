@@ -244,6 +244,7 @@ if __name__ == '__main__':
         frames[i] = Frame(matches_subset[i].T, focal_length,
                 fundamental_matrices[i], im_width, im_height)
         print(f'Bundle adj for frame {i}')
+        # comment this fro speed up and better results
         # bundle_adjustment(frames[i])
     print('Merging frames...')
     merged_frame = merge_all_frames(frames)

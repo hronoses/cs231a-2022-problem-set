@@ -86,5 +86,4 @@ class ImageClassifyModel(object):
         '''
       
     def classify(self, image):
-      # TODO revise to return output of image_classify_net
       return self.image_classify_net.model(image)
